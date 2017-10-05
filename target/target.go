@@ -9,6 +9,15 @@ var targetFactories map[string]Factory
 
 type Factory func(Config) (Target, error)
 
+type CustomTarget interface {
+	Write(string)
+}
+
+type CustomTargetWithError interface {
+	CustomTarget
+	WriteError(string)
+}
+
 type Target interface {
 	Write(info event.Info)
 }
@@ -37,4 +46,8 @@ func New(spec Config) (Target, error) {
 	}
 
 	return target, nil
+}
+
+func RegisterCustomTarget(targetType string, target CustomTarget) error {
+	return RegisterTargetFactory(targetType, NewCustomFactory(target))
 }

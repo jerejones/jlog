@@ -1,6 +1,8 @@
 package jlog
 
-import "reflect"
+import (
+	"reflect"
+)
 
 var (
 	defaultManager *Manager
