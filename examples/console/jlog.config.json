@@ -1,0 +1,18 @@
+{
+  "autoreload": true,
+  "routes": [
+    {
+      "name": "*",
+      "writeto": "console",
+      "minlevel": "debug",
+      "maxlevel": "info"
+    }
+  ],
+  "targets": [
+    {
+      "name": "console",
+      "type": "console",
+      "layout": "${datetime} [${level}] ${message}"
+    }
+  ]
+}
