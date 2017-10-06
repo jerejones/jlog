@@ -24,6 +24,13 @@ func ApplyConfig(cfg *Config) error {
 	return defaultManager.ApplyConfig(cfg)
 }
 
+func ReloadConfig() error {
+	if defaultManager == nil {
+		createDefaultManager()
+	}
+	return defaultManager.ReloadConfig()
+}
+
 func GetNamedLogger(name string) *logger {
 	if defaultManager == nil {
 		createDefaultManager()

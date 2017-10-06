@@ -1,6 +1,8 @@
 package target
 
 import (
+	"fmt"
+
 	"github.com/jerejones/jlog/event"
 	"github.com/pkg/errors"
 )
@@ -22,6 +24,12 @@ type Target interface {
 	Write(info event.Info)
 }
 
+type UnknownTargetError string
+
+func (err UnknownTargetError) Error() string {
+	return fmt.Sprintf("Unknown target type: %s", err)
+}
+
 func RegisterTargetFactory(targetType string, factory Factory) error {
 	if targetFactories == nil {
 		targetFactories = make(map[string]Factory)
@@ -38,7 +46,7 @@ func RegisterTargetFactory(targetType string, factory Factory) error {
 
 func New(spec Config) (Target, error) {
 	if _, exists := targetFactories[spec.Type]; !exists {
-		return nil, errors.Errorf("Unknown target type: %s", spec.Type)
+		return nil, UnknownTargetError(spec.Type)
 	}
 	target, err := targetFactories[spec.Type](spec)
 	if err != nil {

@@ -1,6 +1,7 @@
 package jlog
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -14,18 +15,20 @@ import (
 )
 
 type Manager struct {
-	cfg     *Config
-	loggers map[string]*logger
-	routers []*router
-	targets map[string]target.Target
+	cfg         *Config
+	loggers     map[string]*logger
+	routers     []*router
+	targets     map[string]target.Target
+	cancelWatch func()
 }
 
 func NewManager(cfg *Config) (*Manager, error) {
 	m := Manager{
-		cfg:     nil,
-		loggers: make(map[string]*logger),
-		routers: []*router{},
-		targets: make(map[string]target.Target),
+		cfg:         nil,
+		loggers:     make(map[string]*logger),
+		routers:     []*router{},
+		targets:     make(map[string]target.Target),
+		cancelWatch: func() {},
 	}
 	err := m.ApplyConfig(cfg)
 	if err != nil {
@@ -38,6 +41,8 @@ func (m *Manager) ApplyConfig(cfg *Config) error {
 	if cfg == nil {
 		return nil
 	}
+	m.cancelWatch()
+
 	targets := make(map[string]target.Target)
 
 	for _, spec := range cfg.Targets {
@@ -46,6 +51,9 @@ func (m *Manager) ApplyConfig(cfg *Config) error {
 		}
 		t, err := target.New(spec)
 		if err != nil {
+			if _, ok := err.(target.UnknownTargetError); ok {
+				continue
+			}
 			return errors.Wrap(err, "Error applying config")
 		}
 		targets[spec.Name] = t
@@ -58,7 +66,7 @@ func (m *Manager) ApplyConfig(cfg *Config) error {
 		for _, targetName := range targetNames {
 			t, exists := targets[targetName]
 			if !exists {
-				return errors.Errorf("Unknown target %s for router %s", targetName, spec.Name)
+				continue
 			}
 			router.targets = append(router.targets, t)
 		}
@@ -89,6 +97,10 @@ func (m *Manager) GetNamedLogger(name string) *logger {
 		m.loggers[name] = l
 	}
 	return l
+}
+
+func (m *Manager) ReloadConfig() error {
+	return m.ApplyConfig(m.cfg)
 }
 
 func (m *Manager) GetPackageLogger() *logger {
@@ -139,6 +151,9 @@ func (m *Manager) updateLogger(logger *logger) {
 }
 
 func (m *Manager) watch(filename string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	m.cancelWatch = cancel
+
 	absPath, err := filepath.Abs(filename)
 	if err != nil {
 		return
@@ -161,8 +176,12 @@ func (m *Manager) watch(filename string) {
 					event.Op&fsnotify.Create == fsnotify.Create) {
 				changeFound = true
 			}
+
 		case err := <-watcher.Errors:
 			fmt.Println("error:", err)
+			return
+
+		case <-ctx.Done():
 			return
 		}
 	}
