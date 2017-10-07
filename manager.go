@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -15,11 +16,13 @@ import (
 )
 
 type Manager struct {
-	cfg         *Config
-	loggers     map[string]*logger
-	routers     []*router
-	targets     map[string]target.Target
-	cancelWatch func()
+	cfg     *Config
+	loggers map[string]*logger
+	routers []*router
+	targets map[string]target.Target
+
+	cancelWatch   func()
+	cancelWatchMx sync.Mutex
 }
 
 func NewManager(cfg *Config) (*Manager, error) {
@@ -41,7 +44,9 @@ func (m *Manager) ApplyConfig(cfg *Config) error {
 	if cfg == nil {
 		return nil
 	}
+	m.cancelWatchMx.Lock()
 	m.cancelWatch()
+	m.cancelWatchMx.Unlock()
 
 	targets := make(map[string]target.Target)
 
@@ -152,7 +157,9 @@ func (m *Manager) updateLogger(logger *logger) {
 
 func (m *Manager) watch(filename string) {
 	ctx, cancel := context.WithCancel(context.Background())
+	m.cancelWatchMx.Lock()
 	m.cancelWatch = cancel
+	m.cancelWatchMx.Unlock()
 
 	absPath, err := filepath.Abs(filename)
 	if err != nil {
