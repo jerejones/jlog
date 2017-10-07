@@ -171,7 +171,6 @@ func (m *Manager) watch(filename string) {
 	}
 	defer watcher.Close()
 	dir := filepath.Dir(absPath) + string(filepath.Separator)
-	fmt.Println("Watching: ", dir)
 	watcher.Add(dir)
 
 	changeFound := false
@@ -195,7 +194,6 @@ func (m *Manager) watch(filename string) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	fmt.Println("Reloading config")
 	m.ApplyConfig(LoadConfig(filename))
 }
 
